@@ -54,6 +54,8 @@ DB_PASSWORD=
 DB_NAME=barbearia_maraca
 JWT_SECRET=
 JWT_EXPIRES_IN=1d
+BARBEIRO_EMAIL=
+BARBEIRO_SENHA_INICIAL=
 ```
 Toda vez que você gerar código que lê configuração (conexão com banco, porta do servidor, segredo do JWT), use `process.env.<NOME_EXATO_ACIMA>` — nunca crie uma variável de ambiente com nome diferente.
 
@@ -88,15 +90,42 @@ Processo de Raciocínio da seção 5 normalmente, sem pular etapas por já vir e
   `barbeiro_id` (sistema tem barbeiro único). Só o back-end deste card foi executado, mesma regra dos
   anteriores quanto a front-end.
 
-### 2.7 Estratégia de Mock enquanto o banco de dados não está configurado
-Este projeto ainda não tem Postgres configurado (`/database/migrations` está vazio). Isso não bloqueia
-implementação: toda vez que um card exigir persistência e o banco real ainda não estiver disponível/aplicado,
-implemente o `repository` como uma **interface** (ex.: `ClienteRepository` com `criar`, `buscarPorEmail`) e
-forneça uma implementação em memória (`InMemoryClienteRepository`, array/Map, dados perdidos ao reiniciar o
-processo) para o `service` usar por enquanto. `controller` e `service` nunca dependem da implementação
-concreta, só da interface — isso garante que, quando o Postgres for configurado e a migration aplicada, basta
-trocar a implementação injetada (`PostgresClienteRepository`) sem tocar nas camadas de cima. Sinalize no código
-(comentário curto no arquivo do repository em memória) que aquela implementação é temporária.
+### 2.7 Estratégia de Repository (interface + implementação injetada)
+Todo `repository` é definido como **interface** (ex.: `ClienteRepository` com `criar`, `buscarPorEmail`).
+`controller` e `service` nunca dependem da implementação concreta, só da interface — isso já pagou dividendo
+real neste projeto: os cards US01-US03 foram implementados com repositories em memória enquanto o Postgres
+não estava configurado, e a troca pela implementação real (US12, ver seção 2.8) não exigiu tocar em nenhuma
+linha de `controller`/`service`. Desde a integração com o Postgres (US12), **não use mais implementação em
+memória por padrão** — o banco já está configurado e as classes `InMemory*` foram removidas. Só volte a criar
+uma implementação em memória se um card novo pedir uma entidade cuja tabela ainda não existe no schema real.
+
+### 2.8 Schema Real do Banco (Postgres, desde a integração da US12) — reutilizar, não redecidir
+O schema foi modelado pelo time de Banco de Dados (branch `origin/develop`, trazido para
+`database/migrations/` na integração — ver `docs/plans/back/US12-integracao-postgres.md`). **Nomes de tabela
+reais, diferentes dos placeholders usados em US01-US03:**
+- Credenciais (cliente E barbeiro) ficam na tabela `usuario` (`email`, `senha_hash`, `tipo` ENUM
+  `'cliente'`/`'funcionario'`), não direto em `clientes`/`barbeiro`.
+- Perfil do cliente: tabela `cliente` (`usuario_id` FK, `nome`, `telefone`).
+- Perfil do barbeiro: tabela `funcionario` (`usuario_id` FK, `nome`, `is_admin`, `ativo`) — **não existe
+  tabela `barbeiro`**, o barbeiro administrador único é o `funcionario` com `is_admin = true`, semeado no
+  boot (ver `PostgresBarbeiroRepository.semearSeNecessario`).
+- Serviços: tabela `servico` (singular, não `servicos`), com colunas extras `descricao` (nullable) e `ativo`
+  (filtra a listagem — soft-delete futuro, ex: US04). Convenção de coluna é `created_at`/`updated_at` nessa
+  tabela (não `criado_em`, diferente do resto do projeto) — é a DDL original do time de banco, não foi
+  reescrita; não "corrija" isso por conta própria em cards futuros.
+- Também existem `horario_trabalho` e `agendamento` no schema (para os cards de agendamento, US05 em diante)
+  — sem repository/endpoint ainda, não implemente até o card pedir.
+
+**Duas armadilhas técnicas já descobertas e corrigidas — sempre aplicar em qualquer repository Postgres novo:**
+1. **Colunas `BIGINT`/`BIGSERIAL`/`NUMERIC` voltam como `string` no driver `pg`**, não `number` (evita perda
+   de precisão). Sempre converta com `Number(...)` ao montar o DTO/Entity a partir de uma linha do banco —
+   isso já causou um bug real (JWT com `clienteId`/`barbeiroId` como string, rejeitado pelo middleware de
+   autenticação por falhar o `typeof === 'number'`).
+2. **`dotenv` não sobrescreve variáveis já existentes no ambiente do shell por padrão** — em uma máquina de
+   dev com outros projetos, uma `DB_PASSWORD`/`DB_USER` solta no shell vence silenciosamente o `.env` do
+   projeto. Use sempre `backend/src/config/carregarEnv.ts` (que chama `dotenv.config({ override: true })`)
+   como o **primeiro import** de `server.ts` — nunca uma chamada solta no meio de outros imports (imports em
+   TS/ESM são processados antes do corpo do módulo, então a ordem textual não garante a ordem de execução).
 
 ## 3. Escopo de Atuação — Limites Estritos
 Você atua na etapa **Implementação Assistida** (coluna "Em Desenvolvimento"). Você:

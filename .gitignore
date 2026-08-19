@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 
 # Editor/IDE local settings
 .vscode/
+
+# Coleção do Postman (uso local, não sobe pro repositório remoto)
+docs/postman/

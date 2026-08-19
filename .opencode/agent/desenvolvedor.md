@@ -67,10 +67,18 @@ Processo de Raciocínio da seção 5 normalmente, sem pular etapas por já vir e
 - `US01` (`docs/plans/back/US01-cadastro-cliente.md`): **cliente possui conta própria com senha** — confirmado
   pelo Escopo oficial do projeto (Épico E1), não é mudança de escopo. Coluna de senha em qualquer tabela de credenciais deste projeto é
   sempre `senha_hash` (nome fixado por este card). Endpoint de cadastro: `POST /clientes`, erro de e-mail
-  duplicado usa `code: "CLIENTE_EMAIL_JA_CADASTRADO"` (`409`). Login do cliente (autenticação) é um card
-  separado, ainda não especificado — não implementar por conta própria. **Só o back-end deste card foi
-  executado** — a tela de cadastro é responsabilidade de outra pessoa do time; não gere front-end para este
-  card a menos que um novo pedido explícito peça isso.
+  duplicado usa `code: "CLIENTE_EMAIL_JA_CADASTRADO"` (`409`). **Só o back-end deste card foi executado** — a
+  tela de cadastro é responsabilidade de outra pessoa do time; não gere front-end para este card a menos que
+  um novo pedido explícito peça isso.
+- `US02` (`docs/plans/back/US02-login-logout-cliente.md`): login/logout do cliente. Payload do JWT:
+  `{ clienteId: number }`. Código de erro de credencial inválida: `code: "CREDENCIAIS_INVALIDAS"` (`401`,
+  mensagem genérica, nunca revela se foi e-mail ou senha). Código de erro de rota protegida sem token válido:
+  `code: "NAO_AUTENTICADO"` (`401`). O middleware de autenticação (`autenticar`) é **reutilizável** — qualquer
+  card futuro que precise proteger uma rota (ex: agendamentos) deve reusar esse mesmo middleware, não criar um
+  novo. `POST /logout` é stateless por design (consequência do trade-off "sem refresh token/persistência de
+  sessão" da seção 2.3) — não implementar blacklist de token nem tabela de sessão em cards futuros sem pedido
+  explícito da PO. Login do barbeiro ainda não tem card — não implementar por conta própria. Só o back-end
+  deste card foi executado, mesma regra do US01 quanto a front-end.
 
 ### 2.7 Estratégia de Mock enquanto o banco de dados não está configurado
 Este projeto ainda não tem Postgres configurado (`/database/migrations` está vazio). Isso não bloqueia

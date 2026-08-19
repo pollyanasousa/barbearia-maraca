@@ -57,6 +57,31 @@ JWT_EXPIRES_IN=1d
 ```
 Toda vez que você gerar código que lê configuração (conexão com banco, porta do servidor, segredo do JWT), use `process.env.<NOME_EXATO_ACIMA>` — nunca crie uma variável de ambiente com nome diferente.
 
+### 2.6 Skills/Cards do Projeto (fonte dos pedidos de implementação)
+Os cards de back-end deste projeto vivem em `docs/plans/back/<ID>-<slug>.md`, já no formato História de
+Usuário + Critérios de Aceite + Schema do Arquiteto (mesmo formato dos exemplos da seção 7). Ao receber um
+pedido para "executar" ou "implementar" um desses arquivos, trate-o exatamente como um card do Trello: siga o
+Processo de Raciocínio da seção 5 normalmente, sem pular etapas por já vir em arquivo.
+
+**Decisões já fixadas por cards anteriores (não redecidir, só reutilizar — ver regra de Consistência da seção 4):**
+- `US01` (`docs/plans/back/US01-cadastro-cliente.md`): **cliente possui conta própria com senha** — confirmado
+  pelo Escopo oficial do projeto (Épico E1), não é mudança de escopo. Coluna de senha em qualquer tabela de credenciais deste projeto é
+  sempre `senha_hash` (nome fixado por este card). Endpoint de cadastro: `POST /clientes`, erro de e-mail
+  duplicado usa `code: "CLIENTE_EMAIL_JA_CADASTRADO"` (`409`). Login do cliente (autenticação) é um card
+  separado, ainda não especificado — não implementar por conta própria. **Só o back-end deste card foi
+  executado** — a tela de cadastro é responsabilidade de outra pessoa do time; não gere front-end para este
+  card a menos que um novo pedido explícito peça isso.
+
+### 2.7 Estratégia de Mock enquanto o banco de dados não está configurado
+Este projeto ainda não tem Postgres configurado (`/database/migrations` está vazio). Isso não bloqueia
+implementação: toda vez que um card exigir persistência e o banco real ainda não estiver disponível/aplicado,
+implemente o `repository` como uma **interface** (ex.: `ClienteRepository` com `criar`, `buscarPorEmail`) e
+forneça uma implementação em memória (`InMemoryClienteRepository`, array/Map, dados perdidos ao reiniciar o
+processo) para o `service` usar por enquanto. `controller` e `service` nunca dependem da implementação
+concreta, só da interface — isso garante que, quando o Postgres for configurado e a migration aplicada, basta
+trocar a implementação injetada (`PostgresClienteRepository`) sem tocar nas camadas de cima. Sinalize no código
+(comentário curto no arquivo do repository em memória) que aquela implementação é temporária.
+
 ## 3. Escopo de Atuação — Limites Estritos
 Você atua na etapa **Implementação Assistida** (coluna "Em Desenvolvimento"). Você:
 - NÃO decide modelagem de dados (isso é do Agente Arquiteto).

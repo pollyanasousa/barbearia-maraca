@@ -77,8 +77,16 @@ Processo de Raciocínio da seção 5 normalmente, sem pular etapas por já vir e
   card futuro que precise proteger uma rota (ex: agendamentos) deve reusar esse mesmo middleware, não criar um
   novo. `POST /logout` é stateless por design (consequência do trade-off "sem refresh token/persistência de
   sessão" da seção 2.3) — não implementar blacklist de token nem tabela de sessão em cards futuros sem pedido
-  explícito da PO. Login do barbeiro ainda não tem card — não implementar por conta própria. Só o back-end
-  deste card foi executado, mesma regra do US01 quanto a front-end.
+  explícito da PO. Só o back-end deste card foi executado, mesma regra do US01 quanto a front-end.
+- `US03` (`docs/plans/back/US03-cadastro-servicos.md`): login do barbeiro implementado como **pré-requisito**
+  deste card (conta única semeada via env vars `BARBEIRO_EMAIL`/`BARBEIRO_SENHA_INICIAL` no boot do servidor,
+  sem endpoint público de cadastro — barbeiro é administrador único, ver Escopo 2.2). Endpoint
+  `POST /login-barbeiro`, payload do JWT `{ barbeiroId: number }`. Middleware `autenticarBarbeiro` distingue
+  token de cliente (`403 ACESSO_NEGADO`) de token ausente/inválido (`401 NAO_AUTENTICADO`) — reutilizar esse
+  middleware em qualquer rota futura só de barbeiro, não recriar. Cadastro de serviços: `POST /servicos`
+  (protegido) e `GET /servicos` (pública, sem auth — clientes também precisam listar). Tabela `servicos` sem
+  `barbeiro_id` (sistema tem barbeiro único). Só o back-end deste card foi executado, mesma regra dos
+  anteriores quanto a front-end.
 
 ### 2.7 Estratégia de Mock enquanto o banco de dados não está configurado
 Este projeto ainda não tem Postgres configurado (`/database/migrations` está vazio). Isso não bloqueia

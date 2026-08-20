@@ -1,0 +1,3 @@
+if [ -f backend/package.json ]; then
+  npm run typecheck --prefix backend
+fi

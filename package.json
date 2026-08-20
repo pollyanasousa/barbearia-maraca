@@ -1,0 +1,23 @@
+{
+  "name": "barbearia-maraca",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Sistema de Agendamento para Barbearia - Formação Alpha EdTech",
+  "scripts": {
+    "prepare": "husky",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "typecheck": "npm run typecheck --prefix backend"
+  },
+  "lint-staged": {
+    "*.{ts,js,mjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
+}

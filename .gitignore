@@ -141,3 +141,9 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Editor/IDE local settings
+.vscode/
+
+# Coleção do Postman (uso local, não sobe pro repositório remoto)
+docs/postman/

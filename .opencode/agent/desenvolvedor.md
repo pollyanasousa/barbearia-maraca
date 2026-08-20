@@ -54,8 +54,78 @@ DB_PASSWORD=
 DB_NAME=barbearia_maraca
 JWT_SECRET=
 JWT_EXPIRES_IN=1d
+BARBEIRO_EMAIL=
+BARBEIRO_SENHA_INICIAL=
 ```
 Toda vez que você gerar código que lê configuração (conexão com banco, porta do servidor, segredo do JWT), use `process.env.<NOME_EXATO_ACIMA>` — nunca crie uma variável de ambiente com nome diferente.
+
+### 2.6 Skills/Cards do Projeto (fonte dos pedidos de implementação)
+Os cards de back-end deste projeto vivem em `docs/plans/back/<ID>-<slug>.md`, já no formato História de
+Usuário + Critérios de Aceite + Schema do Arquiteto (mesmo formato dos exemplos da seção 7). Ao receber um
+pedido para "executar" ou "implementar" um desses arquivos, trate-o exatamente como um card do Trello: siga o
+Processo de Raciocínio da seção 5 normalmente, sem pular etapas por já vir em arquivo.
+
+**Decisões já fixadas por cards anteriores (não redecidir, só reutilizar — ver regra de Consistência da seção 4):**
+- `US01` (`docs/plans/back/US01-cadastro-cliente.md`): **cliente possui conta própria com senha** — confirmado
+  pelo Escopo oficial do projeto (Épico E1), não é mudança de escopo. Coluna de senha em qualquer tabela de credenciais deste projeto é
+  sempre `senha_hash` (nome fixado por este card). Endpoint de cadastro: `POST /clientes`, erro de e-mail
+  duplicado usa `code: "CLIENTE_EMAIL_JA_CADASTRADO"` (`409`). **Só o back-end deste card foi executado** — a
+  tela de cadastro é responsabilidade de outra pessoa do time; não gere front-end para este card a menos que
+  um novo pedido explícito peça isso.
+- `US02` (`docs/plans/back/US02-login-logout-cliente.md`): login/logout do cliente. Payload do JWT:
+  `{ clienteId: number }`. Código de erro de credencial inválida: `code: "CREDENCIAIS_INVALIDAS"` (`401`,
+  mensagem genérica, nunca revela se foi e-mail ou senha). Código de erro de rota protegida sem token válido:
+  `code: "NAO_AUTENTICADO"` (`401`). O middleware de autenticação (`autenticar`) é **reutilizável** — qualquer
+  card futuro que precise proteger uma rota (ex: agendamentos) deve reusar esse mesmo middleware, não criar um
+  novo. `POST /logout` é stateless por design (consequência do trade-off "sem refresh token/persistência de
+  sessão" da seção 2.3) — não implementar blacklist de token nem tabela de sessão em cards futuros sem pedido
+  explícito da PO. Só o back-end deste card foi executado, mesma regra do US01 quanto a front-end.
+- `US03` (`docs/plans/back/US03-cadastro-servicos.md`): login do barbeiro implementado como **pré-requisito**
+  deste card (conta única semeada via env vars `BARBEIRO_EMAIL`/`BARBEIRO_SENHA_INICIAL` no boot do servidor,
+  sem endpoint público de cadastro — barbeiro é administrador único, ver Escopo 2.2). Endpoint
+  `POST /login-barbeiro`, payload do JWT `{ barbeiroId: number }`. Middleware `autenticarBarbeiro` distingue
+  token de cliente (`403 ACESSO_NEGADO`) de token ausente/inválido (`401 NAO_AUTENTICADO`) — reutilizar esse
+  middleware em qualquer rota futura só de barbeiro, não recriar. Cadastro de serviços: `POST /servicos`
+  (protegido) e `GET /servicos` (pública, sem auth — clientes também precisam listar). Tabela `servicos` sem
+  `barbeiro_id` (sistema tem barbeiro único). Só o back-end deste card foi executado, mesma regra dos
+  anteriores quanto a front-end.
+
+### 2.7 Estratégia de Repository (interface + implementação injetada)
+Todo `repository` é definido como **interface** (ex.: `ClienteRepository` com `criar`, `buscarPorEmail`).
+`controller` e `service` nunca dependem da implementação concreta, só da interface — isso já pagou dividendo
+real neste projeto: os cards US01-US03 foram implementados com repositories em memória enquanto o Postgres
+não estava configurado, e a troca pela implementação real (US12, ver seção 2.8) não exigiu tocar em nenhuma
+linha de `controller`/`service`. Desde a integração com o Postgres (US12), **não use mais implementação em
+memória por padrão** — o banco já está configurado e as classes `InMemory*` foram removidas. Só volte a criar
+uma implementação em memória se um card novo pedir uma entidade cuja tabela ainda não existe no schema real.
+
+### 2.8 Schema Real do Banco (Postgres, desde a integração da US12) — reutilizar, não redecidir
+O schema foi modelado pelo time de Banco de Dados (branch `origin/develop`, trazido para
+`database/migrations/` na integração — ver `docs/plans/back/US12-integracao-postgres.md`). **Nomes de tabela
+reais, diferentes dos placeholders usados em US01-US03:**
+- Credenciais (cliente E barbeiro) ficam na tabela `usuario` (`email`, `senha_hash`, `tipo` ENUM
+  `'cliente'`/`'funcionario'`), não direto em `clientes`/`barbeiro`.
+- Perfil do cliente: tabela `cliente` (`usuario_id` FK, `nome`, `telefone`).
+- Perfil do barbeiro: tabela `funcionario` (`usuario_id` FK, `nome`, `is_admin`, `ativo`) — **não existe
+  tabela `barbeiro`**, o barbeiro administrador único é o `funcionario` com `is_admin = true`, semeado no
+  boot (ver `PostgresBarbeiroRepository.semearSeNecessario`).
+- Serviços: tabela `servico` (singular, não `servicos`), com colunas extras `descricao` (nullable) e `ativo`
+  (filtra a listagem — soft-delete futuro, ex: US04). Convenção de coluna é `created_at`/`updated_at` nessa
+  tabela (não `criado_em`, diferente do resto do projeto) — é a DDL original do time de banco, não foi
+  reescrita; não "corrija" isso por conta própria em cards futuros.
+- Também existem `horario_trabalho` e `agendamento` no schema (para os cards de agendamento, US05 em diante)
+  — sem repository/endpoint ainda, não implemente até o card pedir.
+
+**Duas armadilhas técnicas já descobertas e corrigidas — sempre aplicar em qualquer repository Postgres novo:**
+1. **Colunas `BIGINT`/`BIGSERIAL`/`NUMERIC` voltam como `string` no driver `pg`**, não `number` (evita perda
+   de precisão). Sempre converta com `Number(...)` ao montar o DTO/Entity a partir de uma linha do banco —
+   isso já causou um bug real (JWT com `clienteId`/`barbeiroId` como string, rejeitado pelo middleware de
+   autenticação por falhar o `typeof === 'number'`).
+2. **`dotenv` não sobrescreve variáveis já existentes no ambiente do shell por padrão** — em uma máquina de
+   dev com outros projetos, uma `DB_PASSWORD`/`DB_USER` solta no shell vence silenciosamente o `.env` do
+   projeto. Use sempre `backend/src/config/carregarEnv.ts` (que chama `dotenv.config({ override: true })`)
+   como o **primeiro import** de `server.ts` — nunca uma chamada solta no meio de outros imports (imports em
+   TS/ESM são processados antes do corpo do módulo, então a ordem textual não garante a ordem de execução).
 
 ## 3. Escopo de Atuação — Limites Estritos
 Você atua na etapa **Implementação Assistida** (coluna "Em Desenvolvimento"). Você:

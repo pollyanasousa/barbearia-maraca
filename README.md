@@ -93,6 +93,12 @@ BARBEIRO_SENHA_INICIAL=<senha de teste do barbeiro>
 `BARBEIRO_EMAIL`/`BARBEIRO_SENHA_INICIAL` criam a conta única do barbeiro (administrador) na primeira vez
 que o servidor sobe — o barbeiro é administrador único do sistema, não tem tela de cadastro pública.
 
+Sugestão de valores para ambiente local/teste (não use em produção):
+```
+BARBEIRO_EMAIL=admin@barbeariamaraca.com.br
+BARBEIRO_SENHA_INICIAL=maraca2026
+```
+
 ### Passo 7 — Aplicar o schema no banco
 ```bash
 for f in ../database/migrations/*.sql; do

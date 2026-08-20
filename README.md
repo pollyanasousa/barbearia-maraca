@@ -95,9 +95,13 @@ que o servidor sobe — o barbeiro é administrador único do sistema, não tem 
 
 ### Passo 7 — Aplicar o schema no banco
 ```bash
-psql -h localhost -U barbearia_app -d barbearia_maraca -f ../database/migrations/<arquivo_mais_recente>.sql
+for f in ../database/migrations/*.sql; do
+  psql -h localhost -U barbearia_app -d barbearia_maraca -v ON_ERROR_STOP=1 -f "$f"
+done
 ```
-(comando executado de dentro de `backend/`; vai pedir a senha do `barbearia_app` do Passo 5)
+(comando executado de dentro de `backend/`; vai pedir a senha do `barbearia_app` do Passo 5 a cada
+arquivo. As migrations devem ser aplicadas **em ordem** — os nomes começam com timestamp UTC, então a
+ordenação alfabética do glob já garante isso.)
 
 ### Passo 8 — Subir a API
 ```bash

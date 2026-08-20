@@ -7,7 +7,7 @@ export interface BarbeiroSeed {
   senha_hash: string;
 }
 
-interface LinhaFuncionarioComUsuario {
+interface LinhaBarbeiroComUsuario {
   id: string; // BIGINT volta como string no driver pg
   nome: string;
   email: string;
@@ -15,16 +15,16 @@ interface LinhaFuncionarioComUsuario {
   criado_em: Date;
 }
 
-// Barbeiro é modelado como `funcionario` no schema real (US12, time de Banco de Dados),
-// ligado a `usuario` (tipo = 'funcionario') pelas credenciais. É administrador único
+// Barbeiro é modelado como `barbeiro` no schema real (US12, time de Banco de Dados),
+// ligado a `usuario` (tipo = 'barbeiro') pelas credenciais. É administrador único
 // (Escopo 2.2) — não existe cadastro público, só o seed no boot (ver semearSeNecessario).
 export class PostgresBarbeiroRepository implements BarbeiroRepository {
   async buscarPorEmail(email: string): Promise<BarbeiroEntity | null> {
-    const resultado = await pool.query<LinhaFuncionarioComUsuario>(
-      `SELECT funcionario.id, funcionario.nome, usuario.email, usuario.senha_hash, funcionario.created_at AS criado_em
+    const resultado = await pool.query<LinhaBarbeiroComUsuario>(
+      `SELECT barbeiro.id, barbeiro.nome, usuario.email, usuario.senha_hash, barbeiro.created_at AS criado_em
        FROM usuario
-       JOIN funcionario ON funcionario.usuario_id = usuario.id
-       WHERE usuario.email = $1 AND usuario.tipo = 'funcionario'`,
+       JOIN barbeiro ON barbeiro.usuario_id = usuario.id
+       WHERE usuario.email = $1 AND usuario.tipo = 'barbeiro'`,
       [email],
     );
 
@@ -44,7 +44,7 @@ export class PostgresBarbeiroRepository implements BarbeiroRepository {
 
   // Não faz parte da interface BarbeiroRepository (que é somente leitura de propósito) —
   // é bootstrap do boot do servidor, não uma operação pública de cadastro. Idempotente:
-  // se já existir um funcionario com esse e-mail, não faz nada.
+  // se já existir um barbeiro com esse e-mail, não faz nada.
   async semearSeNecessario(seed: BarbeiroSeed): Promise<void> {
     const existente = await this.buscarPorEmail(seed.email);
     if (existente !== null) {
@@ -56,12 +56,12 @@ export class PostgresBarbeiroRepository implements BarbeiroRepository {
       await client.query('BEGIN');
 
       const usuario = await client.query<{ id: string }>(
-        `INSERT INTO usuario (email, senha_hash, tipo) VALUES ($1, $2, 'funcionario') RETURNING id`,
+        `INSERT INTO usuario (email, senha_hash, tipo) VALUES ($1, $2, 'barbeiro') RETURNING id`,
         [seed.email, seed.senha_hash],
       );
 
       await client.query(
-        `INSERT INTO funcionario (usuario_id, nome, is_admin, ativo) VALUES ($1, $2, true, true)`,
+        `INSERT INTO barbeiro (usuario_id, nome) VALUES ($1, $2)`,
         [usuario.rows[0].id, seed.nome],
       );
 

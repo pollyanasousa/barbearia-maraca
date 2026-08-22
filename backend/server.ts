@@ -1,5 +1,6 @@
 import './src/config/carregarEnv';
 import bcrypt from 'bcrypt';
+import cors from 'cors';
 import express from 'express';
 import { config } from './src/config/env';
 import { ClienteController } from './src/controllers/ClienteController';
@@ -23,6 +24,7 @@ const CUSTO_BCRYPT = 10;
 
 async function iniciarServidor(): Promise<void> {
   const app = express();
+  app.use(cors({ origin: config.frontendOrigin }));
   app.use(express.json());
 
   const clienteRepository = new PostgresClienteRepository();

@@ -47,6 +47,7 @@ Cada tela é uma função `render<Nome>(container: HTMLElement, params?: Record<
 ```
 NODE_ENV=development
 PORT=3000
+FRONTEND_ORIGIN=http://localhost:8080
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=
@@ -104,11 +105,13 @@ O schema foi modelado pelo time de Banco de Dados (branch `origin/develop`, traz
 `database/migrations/` na integração — ver `docs/plans/back/US12-integracao-postgres.md`). **Nomes de tabela
 reais, diferentes dos placeholders usados em US01-US03:**
 - Credenciais (cliente E barbeiro) ficam na tabela `usuario` (`email`, `senha_hash`, `tipo` ENUM
-  `'cliente'`/`'funcionario'`), não direto em `clientes`/`barbeiro`.
+  `'cliente'`/`'barbeiro'`), não direto em `clientes`/`barbeiro`.
 - Perfil do cliente: tabela `cliente` (`usuario_id` FK, `nome`, `telefone`).
-- Perfil do barbeiro: tabela `funcionario` (`usuario_id` FK, `nome`, `is_admin`, `ativo`) — **não existe
-  tabela `barbeiro`**, o barbeiro administrador único é o `funcionario` com `is_admin = true`, semeado no
-  boot (ver `PostgresBarbeiroRepository.semearSeNecessario`).
+- Perfil do barbeiro: tabela `barbeiro` (`usuario_id` FK, `nome`, `telefone`) — **sem colunas `is_admin`/
+  `ativo`** (removidas numa correção de DDL: eram redundantes, já que o barbeiro é administrador único por
+  definição do Escopo, não múltiplos funcionários com perfis diferentes). A tabela se chamava `funcionario`
+  originalmente; se você encontrar esse nome em código/documentação antiga, está desatualizado — o nome real
+  é `barbeiro`. Conta única semeada no boot (ver `PostgresBarbeiroRepository.semearSeNecessario`).
 - Serviços: tabela `servico` (singular, não `servicos`), com colunas extras `descricao` (nullable) e `ativo`
   (filtra a listagem — soft-delete futuro, ex: US04). Convenção de coluna é `created_at`/`updated_at` nessa
   tabela (não `criado_em`, diferente do resto do projeto) — é a DDL original do time de banco, não foi

@@ -26,6 +26,7 @@ if (dbUser === '' || dbPassword === '') {
 export const config = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT ?? 3000),
+  frontendOrigin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:8080',
   jwtSecret,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '1d',
   barbeiroEmail,

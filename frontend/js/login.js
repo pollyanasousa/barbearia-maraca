@@ -7,6 +7,11 @@ const API_BASE_URL = 'http://localhost:3000';
 // deve migrar para o módulo de sessão compartilhado do router, não ficar duplicada aqui.
 let sessaoBarbeiro = null;
 
+// Ponto de leitura para quando a SPA autenticada existir (nenhuma tela consome isto ainda).
+export function obterSessaoBarbeiro() {
+  return sessaoBarbeiro;
+}
+
 const form = document.getElementById('login-form');
 const emailInput = document.getElementById('login-email');
 const passwordInput = document.getElementById('login-password');
@@ -119,7 +124,9 @@ form.addEventListener('submit', async (evento) => {
     mostrarAlerta('Login realizado com sucesso.', 'success');
     form.reset();
   } catch {
-    mostrarAlerta('Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.');
+    mostrarAlerta(
+      'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.',
+    );
     sacudirCard();
   } finally {
     definirCarregando(false);
